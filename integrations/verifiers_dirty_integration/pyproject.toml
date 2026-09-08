@@ -20,6 +20,7 @@ dev = ["pytest>=8.0"]
 
 [project.scripts]
 datalox-dirty-pair = "datalox_dirty_integration.paired:main"
+datalox-dirty-calibrate = "datalox_dirty_integration.calibration:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

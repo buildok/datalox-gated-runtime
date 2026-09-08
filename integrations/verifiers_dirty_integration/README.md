@@ -101,6 +101,75 @@ zero reduces inference variation but does not make every hosted model backend
 bitwise deterministic. Treat model-output reproducibility as a separate control
 from the deterministic provider and intervention schedules.
 
+## Profiles
+
+Each profile sets three independent dimensions. The names are shorthand, not an
+ordering: a profile is not uniformly harsher than the one below it.
+
+| Profile | `repeat_page_rate` | `count_type_drift_rate` | `request_quota` |
+| --- | --- | --- | --- |
+| `clean` | 0.0 | 0.0 | none |
+| `realistic` | 0.15 | 0.25 | 12 |
+| `hostile` | 0.30 | 0.50 | 16 |
+
+On the fault dimensions `hostile` is the harshest. On request discipline it is
+the most permissive of the two profiles that have a quota at all: it allows 16
+requests where `realistic` allows 12. A trajectory can therefore be rate
+limited under `realistic` and finish untouched under `hostile`.
+
+`request_quota` is a budget for the whole episode, not a rate: it never resets,
+and the intervention fires on every request once `logical_request_index`
+exceeds it.
+
+## Reproduce the public calibration
+
+One command runs the whole deterministic calibration - the off/on pair for
+every profile, and the declared trajectories - and prints a summary short
+enough to paste into an issue:
+
+```bash
+uv run \
+  --project integrations/verifiers_dirty_integration \
+  datalox-dirty-calibrate
+```
+
+Task correctness alone does not show that the verifier catches anything, since
+every trajectory the fixture originally shipped passes. Each declared negative
+names the invariant it is built to break, and the summary reports acceptance
+errors separately from reward, alongside per-profile action counts that keep
+applied actions apart from actions the agent could observe.
+
+It exits nonzero if a declared negative slips past its invariant, a valid
+trajectory is rejected, a configured intervention branch is never exercised, or
+the task-correct trajectories stop being ordered by request discipline.
+
+The report also carries three task-correct trajectories that differ only in how
+many provider calls they spend, so request discipline has to order them rather
+than merely separate a pair:
+
+| Trajectory | Delivered calls | Request discipline |
+| --- | --- | --- |
+| `careful` | 6 | 1.00 |
+| `persistent` | 11 | 0.55 |
+| `wasteful` | 16 | 0.38 |
+
+## Compare two runs of the same seed
+
+Every event carries an identifier minted per run, so two runs of the same seed
+differ on every event while meaning the same thing, and a raw diff of two
+evidence directories is unreadable. `datalox_dirty_integration.rerun` drops
+those identifiers and keeps the policy binding, the decisions, the digests, and
+the delivered observations:
+
+```python
+from datalox_dirty_integration.rerun import compare_runs
+
+comparison = compare_runs(first_trace, second_trace)
+comparison["identical"]  # True for two runs of one seed
+comparison["canonical_differences"]  # what actually differs
+comparison["incidental_differences"]  # the identifiers that were ignored
+```
+
 ## Run the model-free calibration pair
 
 The following command runs a deliberately scripted reference client. It proves

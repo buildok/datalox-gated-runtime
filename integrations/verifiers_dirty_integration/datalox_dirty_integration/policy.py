@@ -21,6 +21,15 @@ from datalox_gated_runtime.models import CallRequest
 
 LIST_PRODUCTS_OPERATION = "medusa.store.products.list"
 
+#: Every action this policy can return, by the kind the runtime records.
+#: Calibration asserts each one is reached, so a branch cannot be added here
+#: without a trajectory that exercises it.
+INTERVENTION_KINDS: tuple[str, ...] = (
+    "quota_response",
+    "repeat_page",
+    "json_type_drift",
+)
+
 
 def _draw(*, seed: str, logical_request_index: int, salt: str) -> float:
     key = f"{seed}:{logical_request_index}:{salt}".encode()
